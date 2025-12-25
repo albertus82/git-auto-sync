@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,6 +37,7 @@ public final class GitSyncService {
 	private final Path repoPath;
 	private final CredentialsProvider credentials;
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+	private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
 
 	public GitSyncService(final Path repoPath, final String username, final String password) {
 		this.repoPath = repoPath;
@@ -48,10 +48,12 @@ public final class GitSyncService {
 	 * ======================= Lifecycle =======================
 	 */
 
-	private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
-
 	public void start() {
-		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 60, TimeUnit.SECONDS);
+		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 10, TimeUnit.SECONDS);
+	}
+
+	public void stop() {
+		scheduler.shutdownNow();
 	}
 
 	private void syncGuarded() {
@@ -64,10 +66,6 @@ public final class GitSyncService {
 		finally {
 			syncInProgress.set(false);
 		}
-	}
-
-	public void stop() {
-		scheduler.shutdownNow();
 	}
 
 	private void syncSafely() {
@@ -208,10 +206,9 @@ public final class GitSyncService {
 		final var workTree = git.getRepository().getWorkTree().toPath();
 		final var original = workTree.resolve(path);
 
-		final var timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_ZONED_DATE_TIME).replace(":", "-").replace("\\", "-").replace("/", "-");
-		;
+		//final var timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_ZONED_DATE_TIME).replace(":", "-").replace("\\", "-").replace("/", "-");
 
-		final var copy = original.resolveSibling(original.getFileName() + "-conflicting on " + timestamp);
+		final var copy = original.resolveSibling(original.getFileName() + " conflicting on " + ZonedDateTime.now());
 
 		Files.copy(original, copy);
 	}
