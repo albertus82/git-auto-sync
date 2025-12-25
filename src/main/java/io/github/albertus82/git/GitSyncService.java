@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -13,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jgit.api.CheckoutCommand.Stage;
 import org.eclipse.jgit.api.Git;
@@ -51,6 +54,7 @@ public final class GitSyncService {
 	private final CredentialsProvider credentials;
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 	private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
+	private final AtomicLong lastPull = new AtomicLong(0);
 
 	public GitSyncService(final Path repoPath, final String username, final String password) {
 		this.repoPath = repoPath;
@@ -62,7 +66,7 @@ public final class GitSyncService {
 	 */
 
 	public void start() {
-		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 10, TimeUnit.SECONDS);
+		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
 	}
 
 	public void stop() {
@@ -86,8 +90,7 @@ public final class GitSyncService {
 			sync();
 		}
 		catch (final Exception e) {
-			System.err.println("[SYNC ERROR] " + e.getMessage());
-			e.printStackTrace(System.err);
+			e.printStackTrace();
 		}
 	}
 
@@ -101,7 +104,11 @@ public final class GitSyncService {
 
 			final boolean merged = recoverIfMerging(git, repo);
 			final boolean committed = commitLocalChanges(git);
-			pullRemoteChanges(git);
+
+			if (committed || Instant.ofEpochMilli(lastPull.get()).isBefore(Instant.now().minus(Duration.of(20, ChronoUnit.SECONDS)))) {
+				lastPull.set(Instant.now().toEpochMilli());
+				pullRemoteChanges(git);
+			}
 			if (merged || committed) {
 				pushChanges(git);
 			}
