@@ -3,8 +3,12 @@ package io.github.albertus82.git;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.ZonedDateTime;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +38,7 @@ public final class GitSyncService {
 		Runtime.getRuntime().addShutdownHook(new Thread(service::stop));
 	}
 
+	private final String clientId = UUID.randomUUID().toString().replace("-", "");
 	private final Path repoPath;
 	private final CredentialsProvider credentials;
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -117,7 +122,7 @@ public final class GitSyncService {
 
 		resolveConflictsIfAny(git);
 
-		git.commit().setMessage("Recovered interrupted merge " + ZonedDateTime.now()).call();
+		git.commit().setMessage(buildMessage()).call();
 		System.out.println("Merged");
 		return true;
 	}
@@ -134,7 +139,7 @@ public final class GitSyncService {
 			return false;
 		}
 
-		git.commit().setMessage("Auto-sync local changes " + ZonedDateTime.now()).call();
+		git.commit().setMessage(buildMessage()).call();
 		System.out.println("Committed");
 		return true;
 	}
@@ -152,9 +157,9 @@ public final class GitSyncService {
 	private void pullRemoteChanges(final Git git) throws Exception {
 		final var result = git.pull().setCredentialsProvider(credentials).setStrategy(MergeStrategy.RECURSIVE).call();
 
-		if (!result.isSuccessful()) {
-			throw new IllegalStateException("Pull failed");
-		}
+//		if (!result.isSuccessful()) {
+//			throw new IllegalStateException("Pull failed");
+//		}
 		System.out.println("Pulled");
 
 		final var merge = result.getMergeResult();
@@ -162,7 +167,7 @@ public final class GitSyncService {
 
 			resolveConflictsIfAny(git);
 
-			git.commit().setMessage("Resolved merge conflicts " + ZonedDateTime.now()).call();
+			git.commit().setMessage(buildMessage()).call();
 			System.out.println("Merged");
 		}
 	}
@@ -190,7 +195,10 @@ public final class GitSyncService {
 			switch (choice) {
 			case 1 -> checkoutStage(git, path, Stage.OURS);
 			case 2 -> checkoutStage(git, path, Stage.THEIRS);
-			case 3 -> createConflictingCopy(git, path);
+			case 3 -> {
+				createConflictingCopy(git, path);
+				checkoutStage(git, path, Stage.THEIRS);
+			}
 			default -> throw new IllegalArgumentException("Invalid choice");
 			}
 		}
@@ -206,10 +214,22 @@ public final class GitSyncService {
 		final var workTree = git.getRepository().getWorkTree().toPath();
 		final var original = workTree.resolve(path);
 
-		//final var timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_ZONED_DATE_TIME).replace(":", "-").replace("\\", "-").replace("/", "-");
+		final var lastModifiedTime = Files.readAttributes(original, BasicFileAttributes.class).lastModifiedTime();
+		final var timestamp = (lastModifiedTime == null ? OffsetDateTime.now() : OffsetDateTime.ofInstant(lastModifiedTime.toInstant(), ZoneId.systemDefault())).toString().replace(":", "-").replace("\\", "-").replace("/", "-");
 
-		final var copy = original.resolveSibling(original.getFileName() + " conflicting on " + ZonedDateTime.now());
-
+		String fileNameWithoutExtension;
+		String extension;
+		final var originalFileName = original.getFileName().toString();
+		final var lastDotIndex = originalFileName.lastIndexOf('.');
+		if (lastDotIndex != -1 && lastDotIndex != originalFileName.length() - 1) {
+			fileNameWithoutExtension = originalFileName.substring(0, lastDotIndex);
+			extension = originalFileName.substring(lastDotIndex);
+		}
+		else {
+			fileNameWithoutExtension = originalFileName;
+			extension = "";
+		}
+		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + clientId + " on " + timestamp + ")" + extension);
 		Files.copy(original, copy);
 	}
 
@@ -221,4 +241,9 @@ public final class GitSyncService {
 		git.push().setCredentialsProvider(credentials).call();
 		System.out.println("Pushed");
 	}
+
+	private String buildMessage() {
+		return clientId + ' ' + OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+	}
+
 }
