@@ -27,6 +27,14 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 public final class GitSyncService {
 
+	// GUI
+	// - check if the directory exists, if not, ask for remote URL and clone
+	// - check if a repo exists in the directory, if not and is empty, ask for remote URL and clone
+	// - check if .gitattributes exists, if not, ask permission to create it "* binary"
+	// -  
+
+	private static final String gitattributes = "* binary"; // Needed to make conflicted copy work correctly
+
 	public static void main(final String... args) {
 		final var repoPath = Path.of(args[0].trim());
 		final var username = args[1].trim();
@@ -118,7 +126,7 @@ public final class GitSyncService {
 			return false;
 		}
 
-		System.out.println("[INFO] Interrupted merge detected");
+		System.out.println("Interrupted merge detected");
 
 		resolveConflictsIfAny(git);
 
@@ -157,9 +165,9 @@ public final class GitSyncService {
 	private void pullRemoteChanges(final Git git) throws Exception {
 		final var result = git.pull().setCredentialsProvider(credentials).setStrategy(MergeStrategy.RECURSIVE).call();
 
-//		if (!result.isSuccessful()) {
-//			throw new IllegalStateException("Pull failed");
-//		}
+		//		if (!result.isSuccessful()) {
+		//			throw new IllegalStateException("Pull failed");
+		//		}
 		System.out.println("Pulled");
 
 		final var merge = result.getMergeResult();
@@ -215,7 +223,7 @@ public final class GitSyncService {
 		final var original = workTree.resolve(path);
 
 		final var lastModifiedTime = Files.readAttributes(original, BasicFileAttributes.class).lastModifiedTime();
-		final var timestamp = (lastModifiedTime == null ? OffsetDateTime.now() : OffsetDateTime.ofInstant(lastModifiedTime.toInstant(), ZoneId.systemDefault())).toString().replace(":", "-").replace("\\", "-").replace("/", "-");
+		final var timestamp = (lastModifiedTime == null ? OffsetDateTime.now() : OffsetDateTime.ofInstant(lastModifiedTime.toInstant(), ZoneId.systemDefault())).toString().replace('.', '-').replace(':', '-').replace('\\', '-').replace('/', '-');
 
 		String fileNameWithoutExtension;
 		String extension;
@@ -229,7 +237,7 @@ public final class GitSyncService {
 			fileNameWithoutExtension = originalFileName;
 			extension = "";
 		}
-		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + clientId + " on " + timestamp + ")" + extension);
+		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + clientId + " on " + timestamp + ')' + extension);
 		Files.copy(original, copy);
 	}
 
