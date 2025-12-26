@@ -1,9 +1,11 @@
 package io.github.albertus82.git.gui;
 
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +79,25 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 		}
 	}
 
+	@Override
+	protected void configureShell(final Shell shell) {
+		super.configureShell(shell);
+		shell.setText(getApplicationName());
+	}
+
+	@Override
+	protected void initializeBounds() {/* Do not pack the shell */}
+
+	@Override
+	protected void createTrimWidgets(final Shell shell) {/* Not needed */}
+
+	@Override
+	protected Layout getLayout() {
+		return GridLayoutFactory.swtDefaults().create();
+	}
+
 	public static String getApplicationName() {
 		return "git auto sync";//  Messages.get("message.application.name");
 	}
+
 }
