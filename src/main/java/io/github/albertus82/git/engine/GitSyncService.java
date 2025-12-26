@@ -1,4 +1,4 @@
-package io.github.albertus82.git;
+package io.github.albertus82.git.engine;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,7 +40,7 @@ public final class GitSyncService {
 
 	private static final String gitattributes = "* binary"; // Needed to make conflicted copy work correctly
 
-	private static final DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final DateTimeFormatter logTimestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
 	public static void main(final String... args) {
 		final var repoPath = Path.of(args[0].trim());
@@ -70,7 +70,7 @@ public final class GitSyncService {
 	 */
 
 	public void start() {
-		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
 	}
 
 	public void stop() {
@@ -137,12 +137,12 @@ public final class GitSyncService {
 			return false;
 		}
 
-		System.out.println(format.format(LocalDateTime.now()) + " - Interrupted merge detected");
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Interrupted merge detected");
 
 		resolveConflictsIfAny(git);
 
 		git.commit().setMessage(buildMessage()).call();
-		System.out.println(format.format(LocalDateTime.now()) + " - Merged");
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
 		return true;
 	}
 
@@ -159,7 +159,7 @@ public final class GitSyncService {
 		}
 
 		git.commit().setMessage(buildMessage()).call();
-		System.out.println(format.format(LocalDateTime.now()) + " - Committed");
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Committed");
 		return true;
 	}
 
@@ -179,7 +179,7 @@ public final class GitSyncService {
 		//		if (!result.isSuccessful()) {
 		//			throw new IllegalStateException("Pull failed");
 		//		}
-		System.out.println(format.format(LocalDateTime.now()) + " - Pulled");
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Pulled");
 
 		final var merge = result.getMergeResult();
 		if (merge != null && merge.getMergeStatus() == MergeStatus.CONFLICTING) {
@@ -187,7 +187,7 @@ public final class GitSyncService {
 			resolveConflictsIfAny(git);
 
 			git.commit().setMessage(buildMessage()).call();
-			System.out.println(format.format(LocalDateTime.now()) + " - Merged");
+			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
 		}
 	}
 
@@ -204,7 +204,7 @@ public final class GitSyncService {
 		final var scanner = new Scanner(System.in);
 
 		for (final var path : conflicts) {
-			System.out.println(format.format(LocalDateTime.now()) + " - Conflict: " + path);
+			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Conflict: " + path);
 			System.out.println("1 = OURS");
 			System.out.println("2 = THEIRS");
 			System.out.println("3 = BOTH (keep both)");
@@ -258,7 +258,7 @@ public final class GitSyncService {
 
 	private void pushChanges(final Git git) throws GitAPIException {
 		git.push().setCredentialsProvider(credentials).call();
-		System.out.println(format.format(LocalDateTime.now()) + " - Pushed");
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Pushed");
 	}
 
 	private String buildMessage() {
