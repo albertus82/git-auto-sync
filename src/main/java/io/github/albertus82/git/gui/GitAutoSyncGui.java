@@ -1,5 +1,7 @@
 package io.github.albertus82.git.gui;
 
+import java.nio.file.Path;
+
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.preference.PreferenceConverter;
@@ -59,12 +61,20 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 
 	private static void start(final String... args) {
 		Shell shell = null;
+		GitSyncService service = null;
 		try {
 			GitAutoSyncConfig.initialize(); // Load configuration and initialize the application
 			final var gui = new GitAutoSyncGui();
 			gui.open(); // Open main window
 			shell = gui.getShell();
-			GitSyncService.main(args);
+
+			final var repoPath = Path.of(args[0].trim());
+			final var username = args[1].trim();
+			final var password = args[2].trim();
+
+			service = new GitSyncService(repoPath, username, password);
+			service.start();
+
 			loop(shell);
 		}
 		catch (final InitializationException e) {
@@ -81,6 +91,11 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 				throw e;
 			}
 		}
+		finally {
+			if (service != null) {
+				service.stop();
+			}
+		}
 	}
 
 	private static void loop(/* @NonNull */ final Shell shell) {
@@ -93,7 +108,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 	}
 
 	@Override
-	protected Control createContents(Composite parent) {
+	protected Control createContents(final Composite parent) {
 		console = new StyledTextConsole(parent, new GridData(SWT.FILL, SWT.FILL, true, true), true);
 		final String fontDataString = configuration.getString("gui.console.font", true);
 		if (!fontDataString.isEmpty()) {
