@@ -11,6 +11,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -19,8 +20,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CheckoutCommand.Stage;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
@@ -61,17 +64,15 @@ public final class GitSyncService {
 	private final Path repoPath;
 	private final CredentialsProvider credentials;
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+	private final AtomicReference<SyncState> state = new AtomicReference<>(SyncState.IDLE);
 	private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
 	private final AtomicLong lastPull = new AtomicLong(0);
+	private final AtomicBoolean pushRequired = new AtomicBoolean(false);
 
 	public GitSyncService(final Path repoPath, final String username, final String password) {
 		this.repoPath = repoPath;
 		this.credentials = new UsernamePasswordCredentialsProvider(username, password);
 	}
-
-	/*
-	 * ======================= Lifecycle =======================
-	 */
 
 	public void start() {
 		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
@@ -82,6 +83,12 @@ public final class GitSyncService {
 	}
 
 	private void syncGuarded() {
+		var current = state.get();
+
+		if (current == SyncState.WAITING_FOR_USER || current == SyncState.BACKOFF) {
+			return; // intentional pause
+		}
+
 		if (!syncInProgress.compareAndSet(false, true)) {
 			return;
 		}
@@ -94,17 +101,22 @@ public final class GitSyncService {
 	}
 
 	private void syncSafely() {
+		state.set(SyncState.SYNCING);
 		try {
 			sync();
+		}
+		catch (final UserInteractionRequired e) {
+			// ok
 		}
 		catch (final Exception e) {
 			e.printStackTrace();
 		}
+		finally {
+			if (state.get() == SyncState.SYNCING) {
+				state.set(SyncState.IDLE);
+			}
+		}
 	}
-
-	/*
-	 * ======================= Sync State Machine =======================
-	 */
 
 	private void sync() throws Exception {
 		try (final var git = openGit()) {
@@ -117,24 +129,16 @@ public final class GitSyncService {
 				lastPull.set(Instant.now().toEpochMilli());
 				pullRemoteChanges(git);
 			}
-			if (merged || committed) {
+			if (merged || committed || pushRequired.getAndSet(false)) {
 				pushChanges(git);
 			}
 		}
 	}
 
-	/*
-	 * ======================= Repository Access =======================
-	 */
-
 	private Git openGit() throws IOException {
 		final var repo = new FileRepositoryBuilder().setGitDir(repoPath.resolve(".git").toFile()).readEnvironment().findGitDir().build();
 		return new Git(repo);
 	}
-
-	/*
-	 * ======================= Merge Recovery =======================
-	 */
 
 	private boolean recoverIfMerging(final Git git, final Repository repo) throws Exception {
 		if (repo.getRepositoryState() != RepositoryState.MERGING) {
@@ -149,10 +153,6 @@ public final class GitSyncService {
 		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
 		return true;
 	}
-
-	/*
-	 * ======================= Local Changes =======================
-	 */
 
 	private boolean commitLocalChanges(final Git git) throws GitAPIException {
 		stageAll(git);
@@ -174,16 +174,8 @@ public final class GitSyncService {
 		git.add().setUpdate(true).call();
 	}
 
-	/*
-	 * ======================= Pull / Merge =======================
-	 */
-
 	private void pullRemoteChanges(final Git git) throws Exception {
 		final var result = git.pull().setCredentialsProvider(credentials).setStrategy(MergeStrategy.RECURSIVE).call();
-
-		//		if (!result.isSuccessful()) {
-		//			throw new IllegalStateException("Pull failed");
-		//		}
 		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Pulled");
 
 		final var merge = result.getMergeResult();
@@ -195,10 +187,6 @@ public final class GitSyncService {
 			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
 		}
 	}
-
-	/*
-	 * ======================= Conflict Resolution =======================
-	 */
 
 	public static int openConflictDialog(Shell parentShell) {
 		final var buttons = new TreeMap<Integer, String>(Map.of(0, "Keep ours", 1, "Keep theirs", 2, "Keep both"));
@@ -213,45 +201,67 @@ public final class GitSyncService {
 
 	}
 
-	private void resolveConflictsIfAny(final Git git) throws Exception {
+	private void resolveConflictsIfAny(Git git) throws Exception {
 		final var conflicts = git.status().call().getConflicting();
 		if (conflicts.isEmpty()) {
 			return;
 		}
 
-		//final var latch = new CountDownLatch(1);
-		for (final var path : conflicts) {
-			Display.getDefault().syncExec(() -> {
-				final var shell = Display.getDefault().getShells().length > 0 ? Display.getDefault().getShells()[0] : null;
-				if (shell != null) {
-					final var choice = openConflictDialog(shell);
-					try {
-						switch (choice) {
-						case 0 -> checkoutStage(git, path, Stage.OURS);
-						case 1 -> checkoutStage(git, path, Stage.THEIRS);
-						/* case 2 */ default -> {
-							createConflictingCopy(git, path);
-							checkoutStage(git, path, Stage.THEIRS);
-						}
-						//default -> throw new IllegalArgumentException("Invalid choice");
-						}
+		final var iterator = conflicts.iterator();
+		state.set(SyncState.WAITING_FOR_USER);
+
+		resolveNextConflictAsync(git, iterator);
+
+		throw new UserInteractionRequired();
+	}
+
+	private void resolveNextConflictAsync(final Git git, final Iterator<String> conflicts) {
+		if (!conflicts.hasNext()) {
+			// All resolved
+			try {
+				stageAll(git);
+				git.commit().setMessage(buildMessage()).call();
+				System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
+				pushRequired.set(true);
+			}
+			catch (final Exception e) {
+				onSyncFailure(e);
+				return;
+			}
+
+			state.set(SyncState.IDLE);
+
+			// Resume sync on background thread
+			scheduler.execute(this::syncGuarded);
+			return;
+		}
+
+		final var path = conflicts.next();
+
+		Display.getDefault().asyncExec(() -> {
+			final var shell = Display.getDefault().getShells().length > 0 ? Display.getDefault().getShells()[0] : null;
+			if (shell != null) {
+				final var choice = ConflictResolutionDialog.ask(shell, path);
+
+				try {
+					switch (choice) {
+					case OURS -> checkoutStage(git, path, CheckoutCommand.Stage.OURS);
+					case THEIRS -> checkoutStage(git, path, CheckoutCommand.Stage.THEIRS);
+					case BOTH -> {
+						createConflictingCopy(git, path);
+						checkoutStage(git, path, Stage.THEIRS);
 					}
-					catch (final Exception e) {
-						throw new RuntimeException(e);
 					}
 				}
-			});
-		}
-		//latch.countDown(); // release
+				catch (final Exception e) {
+					onSyncFailure(e);
+					return;
+				}
 
-		//		try {
-		//			latch.await(); // wait
-		//		}
-		//		catch (final InterruptedException e) {
-		//			Thread.currentThread().interrupt();
-		//		}
-
-		stageAll(git);
+				// Continue with next conflict
+				resolveNextConflictAsync(git, conflicts);
+			}
+		});
 	}
 
 	private void checkoutStage(Git git, String path, Stage stage) throws GitAPIException {
@@ -281,9 +291,9 @@ public final class GitSyncService {
 		Files.copy(original, copy);
 	}
 
-	/*
-	 * ======================= Push =======================
-	 */
+	private void onSyncFailure(final Throwable t) {
+		t.printStackTrace(System.err);
+	}
 
 	private void pushChanges(final Git git) throws GitAPIException {
 		git.push().setCredentialsProvider(credentials).call();
