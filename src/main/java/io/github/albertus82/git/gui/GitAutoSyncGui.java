@@ -2,8 +2,13 @@ package io.github.albertus82.git.gui;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jface.layout.GridLayoutFactory;
+import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.jface.window.Window;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
@@ -11,15 +16,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.github.albertus82.git.config.GitAutoSyncConfig;
+import io.github.albertus82.git.engine.GitSyncService;
 import io.github.albertus82.git.resources.Messages;
 import io.github.albertus82.git.util.BuildInfo;
 import io.github.albertus82.jface.EnhancedErrorDialog;
 import io.github.albertus82.jface.Multilanguage;
+import io.github.albertus82.jface.console.StyledTextConsole;
+import io.github.albertus82.jface.preference.IPreferencesConfiguration;
 import io.github.albertus82.util.InitializationException;
 
 public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 
 	private static final Logger log = LoggerFactory.getLogger(GitAutoSyncGui.class);
+
+	private final IPreferencesConfiguration configuration = GitAutoSyncConfig.getPreferencesConfiguration();
+
+	private StyledTextConsole console;
 
 	private GitAutoSyncGui() {
 		super(null);
@@ -37,7 +49,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 			Display.setAppName(getApplicationName());
 			Display.setAppVersion(BuildInfo.getProperty("project.version"));
 			Window.setDefaultImages(Images.getAppIconArray());
-			start();
+			start(args);
 		}
 		catch (final RuntimeException | Error e) { // NOSONAR Catch Exception instead of Error. Throwable and Error should not be caught (java:S1181)
 			log.error("An unrecoverable error has occurred:", e);
@@ -45,13 +57,14 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 		}
 	}
 
-	private static void start() {
+	private static void start(final String... args) {
 		Shell shell = null;
 		try {
 			GitAutoSyncConfig.initialize(); // Load configuration and initialize the application
 			final var gui = new GitAutoSyncGui();
 			gui.open(); // Open main window
 			shell = gui.getShell();
+			GitSyncService.main(args);
 			loop(shell);
 		}
 		catch (final InitializationException e) {
@@ -77,6 +90,18 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 				display.sleep();
 			}
 		}
+	}
+
+	@Override
+	protected Control createContents(Composite parent) {
+		console = new StyledTextConsole(parent, new GridData(SWT.FILL, SWT.FILL, true, true), true);
+		final String fontDataString = configuration.getString("gui.console.font", true);
+		if (!fontDataString.isEmpty()) {
+			console.setFont(PreferenceConverter.readFontData(fontDataString));
+		}
+		console.setLimit(() -> configuration.getInt("gui.console.max.chars"));
+
+		return super.createContents(parent);
 	}
 
 	@Override
