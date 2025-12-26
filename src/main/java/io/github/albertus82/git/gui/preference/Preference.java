@@ -1,7 +1,7 @@
-package io.github.albertus82.git.gui;
+package io.github.albertus82.git.gui.preference;
 
-import static io.github.albertus82.git.gui.PageDefinition.GENERAL;
-import static io.github.albertus82.git.gui.PageDefinition.LOGGING;
+import static io.github.albertus82.git.gui.preference.PageDefinition.GENERAL;
+import static io.github.albertus82.git.gui.preference.PageDefinition.LOGGING;
 
 import java.net.Proxy;
 import java.time.ZoneId;

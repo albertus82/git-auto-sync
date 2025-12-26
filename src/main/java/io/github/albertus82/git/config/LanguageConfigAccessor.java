@@ -2,7 +2,7 @@ package io.github.albertus82.git.config;
 
 import java.util.Locale;
 
-import io.github.albertus82.git.gui.Preference;
+import io.github.albertus82.git.gui.preference.Preference;
 import io.github.albertus82.jface.preference.IPreferencesConfiguration;
 
 public class LanguageConfigAccessor {

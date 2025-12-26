@@ -5,7 +5,7 @@ import java.io.File;
 import org.eclipse.jface.util.Util;
 
 import ch.qos.logback.classic.Level;
-import io.github.albertus82.git.gui.Preference;
+import io.github.albertus82.git.gui.preference.Preference;
 import io.github.albertus82.git.util.BuildInfo;
 import io.github.albertus82.jface.preference.IPreferencesConfiguration;
 

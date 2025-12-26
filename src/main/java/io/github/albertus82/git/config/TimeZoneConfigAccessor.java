@@ -6,7 +6,7 @@ import java.time.ZoneId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.github.albertus82.git.gui.Preference;
+import io.github.albertus82.git.gui.preference.Preference;
 
 public class TimeZoneConfigAccessor {
 

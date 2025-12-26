@@ -1,4 +1,4 @@
-package io.github.albertus82.git.gui;
+package io.github.albertus82.git.gui.preference;
 
 import java.util.Locale;
 
