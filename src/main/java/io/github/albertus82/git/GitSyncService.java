@@ -6,8 +6,10 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Scanner;
 import java.util.UUID;
@@ -31,12 +33,14 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 public final class GitSyncService {
 
 	// GUI
-	// - check if the directory exists, if not, ask for remote URL and clone
-	// - check if a repo exists in the directory, if not and is empty, ask for remote URL and clone
-	// - check if .gitattributes exists, if not, ask permission to create it "* binary"
-	// -  
+	// - if dir exists and is not empty, ask for another directory.
+	// - if dir not exists, mkdir.
+	// - if dir exists and is empty, mkdir and ask for remote URL, username and password, and clone.
+	// - check if .gitattributes exists, if not, ask permission to create it as "* binary"
 
 	private static final String gitattributes = "* binary"; // Needed to make conflicted copy work correctly
+
+	private static final DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
 	public static void main(final String... args) {
 		final var repoPath = Path.of(args[0].trim());
@@ -133,12 +137,12 @@ public final class GitSyncService {
 			return false;
 		}
 
-		System.out.println("Interrupted merge detected");
+		System.out.println(format.format(LocalDateTime.now()) + " - Interrupted merge detected");
 
 		resolveConflictsIfAny(git);
 
 		git.commit().setMessage(buildMessage()).call();
-		System.out.println("Merged");
+		System.out.println(format.format(LocalDateTime.now()) + " - Merged");
 		return true;
 	}
 
@@ -155,7 +159,7 @@ public final class GitSyncService {
 		}
 
 		git.commit().setMessage(buildMessage()).call();
-		System.out.println("Committed");
+		System.out.println(format.format(LocalDateTime.now()) + " - Committed");
 		return true;
 	}
 
@@ -175,7 +179,7 @@ public final class GitSyncService {
 		//		if (!result.isSuccessful()) {
 		//			throw new IllegalStateException("Pull failed");
 		//		}
-		System.out.println("Pulled");
+		System.out.println(format.format(LocalDateTime.now()) + " - Pulled");
 
 		final var merge = result.getMergeResult();
 		if (merge != null && merge.getMergeStatus() == MergeStatus.CONFLICTING) {
@@ -183,7 +187,7 @@ public final class GitSyncService {
 			resolveConflictsIfAny(git);
 
 			git.commit().setMessage(buildMessage()).call();
-			System.out.println("Merged");
+			System.out.println(format.format(LocalDateTime.now()) + " - Merged");
 		}
 	}
 
@@ -200,7 +204,7 @@ public final class GitSyncService {
 		final var scanner = new Scanner(System.in);
 
 		for (final var path : conflicts) {
-			System.out.println("\nConflict: " + path);
+			System.out.println(format.format(LocalDateTime.now()) + " - Conflict: " + path);
 			System.out.println("1 = OURS");
 			System.out.println("2 = THEIRS");
 			System.out.println("3 = BOTH (keep both)");
@@ -254,7 +258,7 @@ public final class GitSyncService {
 
 	private void pushChanges(final Git git) throws GitAPIException {
 		git.push().setCredentialsProvider(credentials).call();
-		System.out.println("Pushed");
+		System.out.println(format.format(LocalDateTime.now()) + " - Pushed");
 	}
 
 	private String buildMessage() {
