@@ -11,7 +11,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Scanner;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jgit.api.CheckoutCommand.Stage;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
@@ -29,6 +31,8 @@ import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 
 public final class GitSyncService {
 
@@ -70,7 +74,7 @@ public final class GitSyncService {
 	 */
 
 	public void start() {
-		scheduler.scheduleAtFixedRate(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
+		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
 	}
 
 	public void stop() {
@@ -154,6 +158,7 @@ public final class GitSyncService {
 		stageAll(git);
 
 		final var status = git.status().call();
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Status");
 		if (status.isClean()) {
 			return false;
 		}
@@ -195,32 +200,56 @@ public final class GitSyncService {
 	 * ======================= Conflict Resolution =======================
 	 */
 
+	public static int openConflictDialog(Shell parentShell) {
+		final var buttons = new TreeMap<Integer, String>(Map.of(0, "Keep ours", 1, "Keep theirs", 2, "Keep both"));
+
+		MessageDialog dialog = new MessageDialog(parentShell, "Conflict", // dialog title
+				null, // no custom image
+				"How to resolve?", // message
+				MessageDialog.QUESTION, buttons.values().toArray(new String[0]), 2 // default button index
+		);
+
+		return dialog.open();
+
+	}
+
 	private void resolveConflictsIfAny(final Git git) throws Exception {
 		final var conflicts = git.status().call().getConflicting();
 		if (conflicts.isEmpty()) {
 			return;
 		}
 
-		final var scanner = new Scanner(System.in);
-
+		//final var latch = new CountDownLatch(1);
 		for (final var path : conflicts) {
-			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Conflict: " + path);
-			System.out.println("1 = OURS");
-			System.out.println("2 = THEIRS");
-			System.out.println("3 = BOTH (keep both)");
-
-			final int choice = Integer.parseInt(scanner.nextLine());
-
-			switch (choice) {
-			case 1 -> checkoutStage(git, path, Stage.OURS);
-			case 2 -> checkoutStage(git, path, Stage.THEIRS);
-			case 3 -> {
-				createConflictingCopy(git, path);
-				checkoutStage(git, path, Stage.THEIRS);
-			}
-			default -> throw new IllegalArgumentException("Invalid choice");
-			}
+			Display.getDefault().syncExec(() -> {
+				final var shell = Display.getDefault().getShells().length > 0 ? Display.getDefault().getShells()[0] : null;
+				if (shell != null) {
+					final var choice = openConflictDialog(shell);
+					try {
+						switch (choice) {
+						case 0 -> checkoutStage(git, path, Stage.OURS);
+						case 1 -> checkoutStage(git, path, Stage.THEIRS);
+						/* case 2 */ default -> {
+							createConflictingCopy(git, path);
+							checkoutStage(git, path, Stage.THEIRS);
+						}
+						//default -> throw new IllegalArgumentException("Invalid choice");
+						}
+					}
+					catch (final Exception e) {
+						throw new RuntimeException(e);
+					}
+				}
+			});
 		}
+		//latch.countDown(); // release
+
+		//		try {
+		//			latch.await(); // wait
+		//		}
+		//		catch (final InterruptedException e) {
+		//			Thread.currentThread().interrupt();
+		//		}
 
 		stageAll(git);
 	}
