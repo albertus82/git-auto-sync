@@ -3,12 +3,11 @@ package io.github.albertus82.git.gui;
 import java.nio.file.Path;
 
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.jface.window.Window;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -109,7 +108,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 
 	@Override
 	protected Control createContents(final Composite parent) {
-		console = new StyledTextConsole(parent, new GridData(SWT.FILL, SWT.FILL, true, true), true);
+		console = new StyledTextConsole(parent, GridDataFactory.fillDefaults().grab(true, true).create(), true);
 		final String fontDataString = configuration.getString("gui.console.font", true);
 		if (!fontDataString.isEmpty()) {
 			console.setFont(PreferenceConverter.readFontData(fontDataString));
