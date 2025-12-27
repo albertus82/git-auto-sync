@@ -124,7 +124,7 @@ public final class GitSyncService {
 			final boolean merged = recoverIfMerging(git, repo);
 			final boolean committed = commitLocalChanges(git);
 
-			if (committed || Instant.ofEpochMilli(lastPull.get()).isBefore(Instant.now().minus(Duration.of(20, ChronoUnit.SECONDS)))) {
+			if (committed || Instant.ofEpochMilli(lastPull.get()).isBefore(Instant.now().minus(Duration.of(60, ChronoUnit.SECONDS)))) {
 				lastPull.set(Instant.now().toEpochMilli());
 				pullRemoteChanges(git);
 			}
@@ -187,10 +187,10 @@ public final class GitSyncService {
 		}
 	}
 
-	public static int openConflictDialog(Shell parentShell) {
+	public static int openConflictDialog(final Shell parentShell) {
 		final var buttons = new TreeMap<Integer, String>(Map.of(0, "Keep ours", 1, "Keep theirs", 2, "Keep both"));
 
-		MessageDialog dialog = new MessageDialog(parentShell, "Conflict", // dialog title
+		final var dialog = new MessageDialog(parentShell, "Conflict", // dialog title
 				null, // no custom image
 				"How to resolve?", // message
 				MessageDialog.QUESTION, buttons.values().toArray(new String[0]), 2 // default button index
@@ -200,21 +200,21 @@ public final class GitSyncService {
 
 	}
 
-	private void resolveConflictsIfAny(Git git) throws Exception {
-		var conflicts = git.status().call().getConflicting();
+	private void resolveConflictsIfAny(final Git git) throws Exception {
+		final var conflicts = git.status().call().getConflicting();
 		if (conflicts.isEmpty()) {
 			return;
 		}
 
 		state.set(SyncState.WAITING_FOR_USER);
 
-		Iterator<String> iterator = conflicts.iterator();
+		final var iterator = conflicts.iterator();
 		startConflictResolutionSession(git, iterator);
 
 		throw new UserInteractionRequired();
 	}
 
-	private void startConflictResolutionSession(Git git, Iterator<String> conflicts) {
+	private void startConflictResolutionSession(final Git git, final Iterator<String> conflicts) {
 		Display.getDefault().asyncExec(() -> runConflictStep(git, conflicts));
 	}
 
@@ -240,7 +240,7 @@ public final class GitSyncService {
 		try {
 			applyConflictChoice(git, path, choice);
 		}
-		catch (Exception e) {
+		catch (final Exception e) {
 			onSyncFailure(e);
 			return;
 		}
@@ -249,14 +249,14 @@ public final class GitSyncService {
 		Display.getDefault().asyncExec(() -> runConflictStep(git, conflicts));
 	}
 
-	private void completeConflictResolution(Git git) {
+	private void completeConflictResolution(final Git git) {
 		try {
 			stageAll(git);
 			git.commit().setMessage(buildMessage()).call();
 			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
 			pushRequired.set(true);
 		}
-		catch (Exception e) {
+		catch (final Exception e) {
 			onSyncFailure(e);
 			return;
 		}
@@ -265,8 +265,7 @@ public final class GitSyncService {
 		scheduler.execute(this::syncGuarded);
 	}
 
-	private void applyConflictChoice(Git git, String path, ConflictChoice choice) throws Exception {
-
+	private void applyConflictChoice(final Git git, final String path, final ConflictChoice choice) throws Exception {
 		switch (choice) {
 		case OURS -> checkoutStage(git, path, Stage.OURS);
 		case THEIRS -> checkoutStage(git, path, Stage.THEIRS);
@@ -277,7 +276,7 @@ public final class GitSyncService {
 		}
 	}
 
-	private void checkoutStage(Git git, String path, Stage stage) throws GitAPIException {
+	private void checkoutStage(final Git git, final String path, final Stage stage) throws GitAPIException {
 		git.checkout().addPath(path).setStage(stage).call();
 	}
 
@@ -304,8 +303,8 @@ public final class GitSyncService {
 		Files.copy(original, copy);
 	}
 
-	private void onSyncFailure(final Throwable t) {
-		t.printStackTrace(System.err);
+	private void onSyncFailure(final Exception e) {
+		e.printStackTrace();
 	}
 
 	private void pushChanges(final Git git) throws GitAPIException {
