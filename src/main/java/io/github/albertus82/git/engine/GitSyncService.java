@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CheckoutCommand.Stage;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult.MergeStatus;
@@ -202,66 +201,80 @@ public final class GitSyncService {
 	}
 
 	private void resolveConflictsIfAny(Git git) throws Exception {
-		final var conflicts = git.status().call().getConflicting();
+		var conflicts = git.status().call().getConflicting();
 		if (conflicts.isEmpty()) {
 			return;
 		}
 
-		final var iterator = conflicts.iterator();
 		state.set(SyncState.WAITING_FOR_USER);
 
-		resolveNextConflictAsync(git, iterator);
+		Iterator<String> iterator = conflicts.iterator();
+		startConflictResolutionSession(git, iterator);
 
 		throw new UserInteractionRequired();
 	}
 
-	private void resolveNextConflictAsync(final Git git, final Iterator<String> conflicts) {
+	private void startConflictResolutionSession(Git git, Iterator<String> conflicts) {
+		Display.getDefault().asyncExec(() -> runConflictStep(git, conflicts));
+	}
+
+	private void runConflictStep(final Git git, final Iterator<String> conflicts) {
 		if (!conflicts.hasNext()) {
-			// All resolved
-			try {
-				stageAll(git);
-				git.commit().setMessage(buildMessage()).call();
-				System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
-				pushRequired.set(true);
-			}
-			catch (final Exception e) {
-				onSyncFailure(e);
-				return;
-			}
-
-			state.set(SyncState.IDLE);
-
-			// Resume sync on background thread
-			scheduler.execute(this::syncGuarded);
+			completeConflictResolution(git);
 			return;
 		}
 
 		final var path = conflicts.next();
+		// Shell shell = getActiveShell();
+		final var display = Display.getCurrent();
+		if (display == null) {
+			return;
+		}
+		final var shell = display.getShells().length > 0 ? display.getShells()[0] : null;
+		if (shell == null) {
+			return;
+		}
 
-		Display.getDefault().asyncExec(() -> {
-			final var shell = Display.getDefault().getShells().length > 0 ? Display.getDefault().getShells()[0] : null;
-			if (shell != null) {
-				final var choice = ConflictResolutionDialog.ask(shell, path);
+		final var choice = ConflictResolutionDialog.ask(shell, path);
 
-				try {
-					switch (choice) {
-					case OURS -> checkoutStage(git, path, CheckoutCommand.Stage.OURS);
-					case THEIRS -> checkoutStage(git, path, CheckoutCommand.Stage.THEIRS);
-					case BOTH -> {
-						createConflictingCopy(git, path);
-						checkoutStage(git, path, Stage.THEIRS);
-					}
-					}
-				}
-				catch (final Exception e) {
-					onSyncFailure(e);
-					return;
-				}
+		try {
+			applyConflictChoice(git, path, choice);
+		}
+		catch (Exception e) {
+			onSyncFailure(e);
+			return;
+		}
 
-				// Continue with next conflict
-				resolveNextConflictAsync(git, conflicts);
-			}
-		});
+		// Schedule next step explicitly
+		Display.getDefault().asyncExec(() -> runConflictStep(git, conflicts));
+	}
+
+	private void completeConflictResolution(Git git) {
+		try {
+			stageAll(git);
+			git.commit().setMessage(buildMessage()).call();
+			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
+			pushRequired.set(true);
+		}
+		catch (Exception e) {
+			onSyncFailure(e);
+			return;
+		}
+
+		state.set(SyncState.IDLE);
+		scheduler.execute(this::syncGuarded);
+	}
+
+	private void applyConflictChoice(Git git, String path, ConflictChoice choice) throws Exception {
+
+		switch (choice) {
+		case OURS -> checkoutStage(git, path, Stage.OURS);
+		case THEIRS -> checkoutStage(git, path, Stage.THEIRS);
+		case BOTH -> {
+			createConflictingCopy(git, path);
+			checkoutStage(git, path, Stage.THEIRS);
+		}
+		}
 	}
 
 	private void checkoutStage(Git git, String path, Stage stage) throws GitAPIException {

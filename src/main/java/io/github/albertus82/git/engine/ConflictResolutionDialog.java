@@ -6,7 +6,7 @@ public final class ConflictResolutionDialog {
 
     private ConflictResolutionDialog() {}
 
-    public static ConflictResolution ask(Shell parent, String filePath) {
+    public static ConflictChoice ask(Shell parent, String filePath) {
 
         String[] buttons = {
                 "Keep OURS",
@@ -28,9 +28,9 @@ public final class ConflictResolutionDialog {
         int result = dialog.open();
 
         return switch (result) {
-            case 0 -> ConflictResolution.OURS;
-            case 1 -> ConflictResolution.THEIRS;
-            case 2 -> ConflictResolution.BOTH;
+            case 0 -> ConflictChoice.OURS;
+            case 1 -> ConflictChoice.THEIRS;
+            case 2 -> ConflictChoice.BOTH;
             default -> throw new IllegalStateException("Dialog closed");
         };
     }

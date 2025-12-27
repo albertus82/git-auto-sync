@@ -1,6 +1,6 @@
 package io.github.albertus82.git.engine;
 
-public enum ConflictResolution {
+public enum ConflictChoice {
 	OURS,
 	THEIRS,
 	BOTH
