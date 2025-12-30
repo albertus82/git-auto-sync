@@ -3,8 +3,6 @@ package io.github.albertus82.git.resources;
 import java.util.Collection;
 import java.util.Locale;
 
-import lombok.NonNull;
-
 public enum Messages implements ConfigurableMessages {
 
 	INSTANCE;

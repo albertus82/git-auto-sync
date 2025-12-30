@@ -12,16 +12,15 @@ import io.github.albertus82.git.util.BuildInfo;
 import io.github.albertus82.jface.preference.IPreferencesConfiguration;
 import io.github.albertus82.jface.preference.PreferencesConfiguration;
 import io.github.albertus82.util.InitializationException;
+import io.github.albertus82.util.SystemUtils;
 import io.github.albertus82.util.config.Configuration;
 import io.github.albertus82.util.config.PropertiesConfiguration;
-
- 
 
 public class ApplicationConfig extends Configuration {
 
 	private static final String DIRECTORY_NAME;
 	private static final String CFG_FILE_NAME = BuildInfo.getProperty("project.groupId") + '.' + BuildInfo.getProperty("project.artifactId") + ".cfg";
-	
+
 	public static class Defaults {
 		public static final boolean LOGGING_FILES_ENABLED = true;
 		public static final Level LOGGING_LEVEL = Level.INFO;
@@ -34,7 +33,7 @@ public class ApplicationConfig extends Configuration {
 		public static final String GUI_IMPORTANT_KEYS_SEPARATOR = ",";
 		public static final String CONSOLE_SHOW_KEYS_SEPARATOR = ",";
 		public static final String THRESHOLDS_EXCLUDED_SEPARATOR = ",";
-		public static final String LOGGING_FILES_PATH = null;
+		public static final String LOGGING_FILES_PATH = SystemUtils.getOsSpecificLocalAppDataDir() + File.separator + DIRECTORY_NAME;
 
 		private Defaults() {
 			throw new IllegalAccessError("Constants class");
@@ -98,7 +97,7 @@ public class ApplicationConfig extends Configuration {
 	public static void initialize() {
 		try {
 			final ApplicationConfig config = getInstance();
-			 Messages.INSTANCE.setLanguage(config.languageConfigAccessor.getLanguage());
+			Messages.INSTANCE.setLanguage(config.languageConfigAccessor.getLanguage());
 		}
 		catch (final RuntimeException e) {
 			throw new InitializationException(e);

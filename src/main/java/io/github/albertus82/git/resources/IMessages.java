@@ -2,8 +2,6 @@ package io.github.albertus82.git.resources;
 
 import java.util.Collection;
 
-import lombok.NonNull;
-
 public interface IMessages {
 
 	String get(/* @NonNull */ String key);

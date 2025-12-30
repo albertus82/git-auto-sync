@@ -14,7 +14,6 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 
-import lombok.NonNull;
 import lombok.extern.java.Log;
 
 @Log

@@ -6,7 +6,6 @@ import io.github.albertus82.git.gui.preference.Preference;
 import io.github.albertus82.git.resources.Language;
 import io.github.albertus82.jface.preference.IPreferencesConfiguration;
 import lombok.AccessLevel;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
