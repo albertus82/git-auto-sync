@@ -117,7 +117,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 		}
 		console.setLimit(() -> configuration.getInt("gui.console.max.chars"));
 
-		return getShell();
+		return parent;
 	}
 
 	@Override
