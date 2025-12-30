@@ -3,8 +3,13 @@ package io.github.albertus82.git.config;
 import java.util.Locale;
 
 import io.github.albertus82.git.gui.preference.Preference;
+import io.github.albertus82.git.resources.Language;
 import io.github.albertus82.jface.preference.IPreferencesConfiguration;
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class LanguageConfigAccessor {
 
 	public static final String DEFAULT_LANGUAGE = Locale.getDefault().getLanguage();
@@ -12,12 +17,8 @@ public class LanguageConfigAccessor {
 	/* @NonNull */
 	private final IPreferencesConfiguration configuration;
 
-	public LanguageConfigAccessor(IPreferencesConfiguration configuration) {
-		this.configuration = configuration;
-	}
-
-	public String getLanguage() {
-		return configuration.getString(Preference.LANGUAGE, DEFAULT_LANGUAGE);
+	public /* @NonNull */ Language getLanguage() {
+		return Language.fromString(configuration.getString(Preference.LANGUAGE, DEFAULT_LANGUAGE)).orElse(Language.ENGLISH);
 	}
 
 }

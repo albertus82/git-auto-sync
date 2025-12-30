@@ -84,7 +84,7 @@ public final class GitSyncService {
 	private void syncGuarded() {
 		var current = state.get();
 
-		if (current == SyncState.WAITING_FOR_USER || current == SyncState.BACKOFF) {
+		if (current == SyncState.WAITING_FOR_USER) {
 			return; // intentional pause
 		}
 

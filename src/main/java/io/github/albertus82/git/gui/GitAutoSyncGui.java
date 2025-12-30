@@ -16,8 +16,9 @@ import org.eclipse.swt.widgets.Shell;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.github.albertus82.git.config.GitAutoSyncConfig;
+import io.github.albertus82.git.config.ApplicationConfig;
 import io.github.albertus82.git.engine.GitSyncService;
+import io.github.albertus82.git.resources.ConfigurableMessages;
 import io.github.albertus82.git.resources.Messages;
 import io.github.albertus82.git.util.BuildInfo;
 import io.github.albertus82.jface.EnhancedErrorDialog;
@@ -30,7 +31,9 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 
 	private static final Logger log = LoggerFactory.getLogger(GitAutoSyncGui.class);
 
-	private final IPreferencesConfiguration configuration = GitAutoSyncConfig.getPreferencesConfiguration();
+	private static final ConfigurableMessages messages = Messages.INSTANCE;
+
+	private final IPreferencesConfiguration configuration = ApplicationConfig.getPreferencesConfiguration();
 
 	private StyledTextConsole console;
 
@@ -42,7 +45,6 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 	@Override
 	public void updateLanguage() {
 		// TODO Auto-generated method stub
-
 	}
 
 	public static void main(final String... args) {
@@ -62,7 +64,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 		Shell shell = null;
 		GitSyncService service = null;
 		try {
-			GitAutoSyncConfig.initialize(); // Load configuration and initialize the application
+			ApplicationConfig.initialize(); // Load configuration and initialize the application
 			final var gui = new GitAutoSyncGui();
 			gui.open(); // Open main window
 			shell = gui.getShell();
@@ -77,7 +79,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 			loop(shell);
 		}
 		catch (final InitializationException e) {
-			EnhancedErrorDialog.openError(shell, getApplicationName(), Messages.get("error.fatal.init"), IStatus.ERROR, e, Images.getAppIconArray());
+			EnhancedErrorDialog.openError(shell, getApplicationName(), messages.get("error.fatal.init"), IStatus.ERROR, e, Images.getAppIconArray());
 			throw e;
 		}
 		catch (final RuntimeException e) {
@@ -86,7 +88,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 				// Do not rethrow, exiting with status OK.
 			}
 			else {
-				EnhancedErrorDialog.openError(shell, getApplicationName(), Messages.get("error.fatal"), IStatus.ERROR, e, Images.getAppIconArray());
+				EnhancedErrorDialog.openError(shell, getApplicationName(), messages.get("error.fatal"), IStatus.ERROR, e, Images.getAppIconArray());
 				throw e;
 			}
 		}

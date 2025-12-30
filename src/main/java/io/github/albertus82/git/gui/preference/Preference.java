@@ -14,13 +14,10 @@ import java.util.TreeSet;
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.swt.widgets.Composite;
 
+import io.github.albertus82.git.config.ApplicationConfig;
 import io.github.albertus82.git.config.LanguageConfigAccessor;
-import io.github.albertus82.git.config.TimeZoneConfigAccessor;
-import io.github.albertus82.git.config.logging.LoggingConfig;
-import io.github.albertus82.git.config.logging.LoggingLevel;
+import io.github.albertus82.git.resources.Language;
 import io.github.albertus82.git.resources.Messages;
-import io.github.albertus82.git.resources.Messages.Language;
-import io.github.albertus82.jface.SwtUtils;
 import io.github.albertus82.jface.preference.FieldEditorDetails;
 import io.github.albertus82.jface.preference.FieldEditorDetails.FieldEditorDetailsBuilder;
 import io.github.albertus82.jface.preference.FieldEditorFactory;
@@ -32,22 +29,20 @@ import io.github.albertus82.jface.preference.StaticLabelsAndValues;
 import io.github.albertus82.jface.preference.field.DefaultBooleanFieldEditor;
 import io.github.albertus82.jface.preference.field.DefaultComboFieldEditor;
 import io.github.albertus82.jface.preference.field.EnhancedDirectoryFieldEditor;
-import io.github.albertus82.jface.preference.field.ListFieldEditor;
-import io.github.albertus82.jface.preference.field.ScaleIntegerFieldEditor;
+import io.github.albertus82.jface.preference.field.ShortFieldEditor;
 import io.github.albertus82.jface.preference.page.IPageDefinition;
+import io.github.albertus82.jface.preference.page.LoggingPreferencePage;
+import io.github.albertus82.util.logging.HousekeepingFilter;
 
 public enum Preference implements IPreference {
 
 	LANGUAGE(new PreferenceDetailsBuilder(GENERAL).defaultValue(LanguageConfigAccessor.DEFAULT_LANGUAGE).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(Preference.getLanguageComboOptions()).build()),
-	TIMEZONE(new PreferenceDetailsBuilder(GENERAL).defaultValue(TimeZoneConfigAccessor.DEFAULT_ZONE_ID).build(), new FieldEditorDetailsBuilder(Boolean.TRUE.equals(SwtUtils.isGtk3()) ? ListFieldEditor.class : DefaultComboFieldEditor.class).labelsAndValues(getTimeZoneComboOptions()).height(3).build()), // GTK3 combo rendering is slow when item count is high
 
-	LOGGING_CONSOLE_LEVEL(new PreferenceDetailsBuilder(LOGGING).defaultValue(LoggingConfig.Defaults.LOGGING_LEVEL.toString()).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(getLoggingComboOptions()).build()),
-	LOGGING_FILES_ENABLED(new PreferenceDetailsBuilder(LOGGING).separate().defaultValue(LoggingConfig.Defaults.LOGGING_FILES_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
-	LOGGING_FILES_LEVEL(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(LoggingConfig.Defaults.LOGGING_LEVEL.toString()).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(getLoggingComboOptions()).build()),
-	LOGGING_FILES_PATH(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(LoggingConfig.Defaults.LOGGING_FILES_PATH).build(), new FieldEditorDetailsBuilder(EnhancedDirectoryFieldEditor.class).emptyStringAllowed(false).directoryMustExist(false).directoryDialogMessage(() -> Messages.get("message.preferences.directory.dialog.message.log")).build()),
-	LOGGING_FILES_LIMIT(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(LoggingConfig.Defaults.LOGGING_FILES_MAX_SIZE_KB).build(), new FieldEditorDetailsBuilder(ScaleIntegerFieldEditor.class).scaleMinimum(512).scaleMaximum(8192).scalePageIncrement(512).build()),
-	LOGGING_FILES_COUNT(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(LoggingConfig.Defaults.LOGGING_FILES_MAX_INDEX).build(), new FieldEditorDetailsBuilder(ScaleIntegerFieldEditor.class).scaleMinimum(1).scaleMaximum(9).scalePageIncrement(1).build()),
-	LOGGING_FILES_COMPRESSION_ENABLED(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(LoggingConfig.Defaults.LOGGING_FILES_COMPRESSION_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build());
+	LOGGING_LEVEL(new PreferenceDetailsBuilder(LOGGING).defaultValue(ApplicationConfig.Defaults.LOGGING_LEVEL.getName()).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(LoggingPreferencePage.getLoggingLevelComboOptions()).build()),
+	LOGGING_FILES_ENABLED(new PreferenceDetailsBuilder(LOGGING).separate().defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
+	LOGGING_FILES_PATH(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_PATH).build(), new FieldEditorDetailsBuilder(EnhancedDirectoryFieldEditor.class).emptyStringAllowed(false).directoryMustExist(false).directoryDialogMessage(() -> Messages.INSTANCE.get("msg.preferences.directory.dialog.message.log")).build()),
+	LOGGING_FILES_AUTOCLEAN_ENABLED(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_AUTOCLEAN_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
+	LOGGING_FILES_AUTOCLEAN_KEEP(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_AUTOCLEAN_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_AUTOCLEAN_KEEP).build(), new FieldEditorDetailsBuilder(ShortFieldEditor.class).numberMinimum(HousekeepingFilter.MIN_HISTORY).build());
 
 	private static final String LABEL_KEY_PREFIX = "label.preferences.";
 
@@ -63,7 +58,7 @@ public enum Preference implements IPreference {
 			preferenceDetails.setName(name().toLowerCase(Locale.ROOT).replace('_', '.'));
 		}
 		if (preferenceDetails.getLabel() == null) {
-			preferenceDetails.setLabel(() -> Messages.get(LABEL_KEY_PREFIX + preferenceDetails.getName()));
+			preferenceDetails.setLabel(() -> Messages.INSTANCE.get(LABEL_KEY_PREFIX + preferenceDetails.getName()));
 		}
 	}
 
@@ -119,20 +114,12 @@ public enum Preference implements IPreference {
 	}
 
 	public static LocalizedLabelsAndValues getLanguageComboOptions() {
-		final Language[] values = Messages.Language.values();
+		final Language[] values = Language.values();
 		final LocalizedLabelsAndValues options = new LocalizedLabelsAndValues(values.length);
 		for (final Language language : values) {
 			final Locale locale = language.getLocale();
 			final String value = locale.getLanguage();
 			options.add(() -> locale.getDisplayLanguage(locale), value);
-		}
-		return options;
-	}
-
-	public static StaticLabelsAndValues getLoggingComboOptions() {
-		final StaticLabelsAndValues options = new StaticLabelsAndValues(LoggingLevel.values().length);
-		for (final LoggingLevel level : LoggingLevel.values()) {
-			options.put(level.toString(), level.toString());
 		}
 		return options;
 	}

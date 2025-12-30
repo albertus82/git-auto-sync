@@ -4,22 +4,22 @@ import java.util.Locale;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 
+import io.github.albertus82.git.resources.ConfigurableMessages;
 import io.github.albertus82.git.resources.Messages;
 import io.github.albertus82.jface.preference.page.BasePreferencePage;
 import io.github.albertus82.jface.preference.page.IPageDefinition;
+import io.github.albertus82.jface.preference.page.LoggingPreferencePage;
 import io.github.albertus82.jface.preference.page.PageDefinitionDetails;
 import io.github.albertus82.jface.preference.page.PageDefinitionDetails.PageDefinitionDetailsBuilder;
 
 public enum PageDefinition implements IPageDefinition {
 
 	GENERAL,
-	CONNECTION,
-	CRITERIA,
-	CACHE,
-	LOGGING(new PageDefinitionDetailsBuilder().pageClass(LoggingPreferencePage.class).build()),
-	ADVANCED;
+	LOGGING(new PageDefinitionDetailsBuilder().pageClass(LoggingPreferencePage.class).build());
 
 	private static final String LABEL_KEY_PREFIX = "label.preferences.";
+
+	private static final ConfigurableMessages messages = Messages.INSTANCE;
 
 	private final PageDefinitionDetails pageDefinitionDetails;
 
@@ -33,7 +33,7 @@ public enum PageDefinition implements IPageDefinition {
 			pageDefinitionDetails.setNodeId(name().toLowerCase(Locale.ROOT).replace('_', '.'));
 		}
 		if (pageDefinitionDetails.getLabel() == null) {
-			pageDefinitionDetails.setLabel(() -> Messages.get(LABEL_KEY_PREFIX + pageDefinitionDetails.getNodeId()));
+			pageDefinitionDetails.setLabel(() -> messages.get(LABEL_KEY_PREFIX + pageDefinitionDetails.getNodeId()));
 		}
 	}
 

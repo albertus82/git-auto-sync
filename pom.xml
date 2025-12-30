@@ -160,7 +160,7 @@
 		<dependency>
 			<groupId>io.github.albertus82</groupId>
 			<artifactId>jface-utils</artifactId>
-			<version>20.1.0</version>
+			<version>20.2.0</version>
 			<!--<exclusions>
 				<exclusion>
 					<groupId>org.eclipse.platform</groupId>
@@ -174,11 +174,6 @@
 			<artifactId>slf4j-api</artifactId>
 			<version>2.0.17</version>
 		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<version>1.5.23</version>
-		</dependency>
 
 		<dependency>
 			<groupId>org.eclipse.jgit</groupId>
@@ -188,7 +183,7 @@
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
-			<artifactId>jul-to-slf4j</artifactId>
+			<artifactId>slf4j-jdk14</artifactId>
 			<version>2.0.17</version>
 		</dependency>
 		<dependency>
@@ -202,6 +197,15 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		
+		
+				<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.42</version>
+			<scope>provided</scope>
+		</dependency>
+		
 	</dependencies>
 
 </project>
