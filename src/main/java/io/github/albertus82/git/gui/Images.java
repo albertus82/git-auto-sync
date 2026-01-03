@@ -67,7 +67,7 @@ public class Images {
 		throw new IllegalStateException("No map icon found for desired size " + desiredSizePixels + " pixels");
 	}
 
-	public static Map<Rectangle, Image> getAppiconmap() {
+	public static Map<Rectangle, Image> getAppIconMap() {
 		return appIconMap;
 	}
 
