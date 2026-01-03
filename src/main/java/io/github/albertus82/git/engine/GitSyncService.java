@@ -1,5 +1,6 @@
 package io.github.albertus82.git.engine;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,7 +37,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
-public class GitSyncService {
+public class GitSyncService implements Closeable {
 
 	// GUI
 	// - if dir exists and is not empty, ask for another directory.
@@ -48,7 +49,7 @@ public class GitSyncService {
 
 	private static final DateTimeFormatter logTimestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
-	public static void main(final String... args) {
+	public static void main(final String... args) throws IOException {
 		final var repoPath = Path.of(args[0].trim());
 		final var username = args[1].trim();
 		final var password = args[2].trim();
@@ -68,17 +69,23 @@ public class GitSyncService {
 	private final AtomicLong lastPull = new AtomicLong(0);
 	private final AtomicBoolean pushRequired = new AtomicBoolean(false);
 
-	public GitSyncService(final Path repoPath, final String username, final String password) {
-		this.repoPath = repoPath;
+	public GitSyncService(final Path repoPath, final String username, final String password) throws IOException {
+		this.repoPath = repoPath.toRealPath();
 		this.credentials = new UsernamePasswordCredentialsProvider(username, password);
 	}
 
 	public void start() {
+		log(repoPath);
 		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
 	}
 
 	public void stop() {
 		scheduler.shutdownNow();
+	}
+
+	@Override
+	public void close() {
+		stop();
 	}
 
 	private void syncGuarded() {
@@ -144,12 +151,12 @@ public class GitSyncService {
 			return false;
 		}
 
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Interrupted merge detected");
+		log("Interrupted merge detected");
 
 		resolveConflictsIfAny(git);
 
 		git.commit().setMessage(buildMessage()).call();
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
+		log("Merged");
 		return true;
 	}
 
@@ -157,13 +164,13 @@ public class GitSyncService {
 		stageAll(git);
 
 		final var status = git.status().call();
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Status");
+		log("Status");
 		if (status.isClean()) {
 			return false;
 		}
 
 		git.commit().setMessage(buildMessage()).call();
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Committed");
+		log("Committed");
 		return true;
 	}
 
@@ -175,7 +182,7 @@ public class GitSyncService {
 
 	private void pullRemoteChanges(final Git git) throws Exception {
 		final var result = git.pull().setCredentialsProvider(credentials).setStrategy(MergeStrategy.RECURSIVE).call();
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Pulled");
+		log("Pulled");
 
 		final var merge = result.getMergeResult();
 		if (merge != null && merge.getMergeStatus() == MergeStatus.CONFLICTING) {
@@ -183,7 +190,7 @@ public class GitSyncService {
 			resolveConflictsIfAny(git);
 
 			git.commit().setMessage(buildMessage()).call();
-			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
+			log("Merged");
 		}
 	}
 
@@ -253,7 +260,7 @@ public class GitSyncService {
 		try {
 			stageAll(git);
 			git.commit().setMessage(buildMessage()).call();
-			System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Merged");
+			log("Merged");
 			pushRequired.set(true);
 		}
 		catch (final Exception e) {
@@ -309,11 +316,15 @@ public class GitSyncService {
 
 	private void pushChanges(final Git git) throws GitAPIException {
 		git.push().setCredentialsProvider(credentials).call();
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - Pushed");
+		log("Pushed");
 	}
 
 	private String buildMessage() {
 		return clientId + ' ' + OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+	}
+
+	private static void log(final Object message) {
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - " + String.valueOf(message));
 	}
 
 }

@@ -71,6 +71,8 @@ public class Images {
 		return appIconMap;
 	}
 
-	private Images() {}
+	private Images() {
+		throw new IllegalAccessError();
+	}
 
 }

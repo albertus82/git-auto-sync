@@ -113,7 +113,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 		shell.setRedraw(true);
 	}
 
-	public static void main(final String... args) {
+	public static void main(final String... args) throws IOException {
 		try {
 			Display.setAppName(getApplicationName());
 			Display.setAppVersion(BuildInfo.getProperty("project.version"));
@@ -126,7 +126,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 		}
 	}
 
-	private static void start(final String... args) {
+	private static void start(final String... args) throws IOException {
 		Shell shell = null;
 		GitSyncService service = null;
 		try {
@@ -144,7 +144,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 
 			loop(shell);
 		}
-		catch (final InitializationException e) {
+		catch (final InitializationException | IOException e) {
 			EnhancedErrorDialog.openError(shell, getApplicationName(), messages.get("error.fatal.init"), IStatus.ERROR, e, Images.getAppIconArray());
 			throw e;
 		}
@@ -362,7 +362,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 	}
 
 	public static String getApplicationName() {
-		return "git auto sync"; // FIXME Messages.get("message.application.name");
+		return messages.get("message.application.name");
 	}
 
 }
