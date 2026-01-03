@@ -36,7 +36,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
-public final class GitSyncService {
+public class GitSyncService {
 
 	// GUI
 	// - if dir exists and is not empty, ask for another directory.
