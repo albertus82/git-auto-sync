@@ -18,8 +18,11 @@ import io.github.albertus82.util.config.PropertiesConfiguration;
 
 public class ApplicationConfig extends Configuration {
 
-	private static final String DIRECTORY_NAME;
-	private static final String CFG_FILE_NAME = BuildInfo.getProperty("project.groupId") + '.' + BuildInfo.getProperty("project.artifactId") + ".cfg";
+	private static final String DIRECTORY_NAME = Util.isLinux() ? '.' + BuildInfo.getProperty("project.artifactId") : BuildInfo.getProperty("project.name");
+
+	public static final String APPDATA_DIRECTORY = SystemUtils.getOsSpecificLocalAppDataDir() + File.separator + DIRECTORY_NAME;
+
+	private static final String CFG_FILE_NAME = (Util.isLinux() ? BuildInfo.getProperty("project.artifactId") : BuildInfo.getProperty("project.name").replace(" ", "")) + ".cfg";
 
 	public static class Defaults {
 		public static final boolean LOGGING_FILES_ENABLED = true;
@@ -37,18 +40,6 @@ public class ApplicationConfig extends Configuration {
 
 		private Defaults() {
 			throw new IllegalAccessError("Constants class");
-		}
-	}
-
-	static {
-		if (Util.isLinux()) {
-			DIRECTORY_NAME = '.' + BuildInfo.getProperty("project.artifactId");
-		}
-		else if (Util.isMac()) {
-			DIRECTORY_NAME = "";
-		}
-		else {
-			DIRECTORY_NAME = BuildInfo.getProperty("project.name");
 		}
 	}
 

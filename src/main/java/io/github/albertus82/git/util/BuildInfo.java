@@ -6,14 +6,13 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Properties;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public enum BuildInfo {
 
 	INSTANCE;
-
-	private static final Logger log = LoggerFactory.getLogger(BuildInfo.class);
 
 	private static final String RESOURCE_NAME = "build-info.properties";
 
@@ -38,7 +37,7 @@ public enum BuildInfo {
 	 * @param key the property key.
 	 * @return the value in this property list with the specified key value.
 	 */
-	public static String getProperty(final String key) {
+	public static String getProperty(@NonNull final String key) {
 		final String value = INSTANCE.properties.getProperty(key);
 		if (value == null) {
 			log.warn("Missing property for key: \"{}\".", key);
