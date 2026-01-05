@@ -31,11 +31,6 @@ public class ApplicationConfig extends Configuration {
 		public static final int LOGGING_FILES_COUNT = 1;
 		public static final boolean LOGGING_FILES_AUTOCLEAN_ENABLED = true;
 		public static final short LOGGING_FILES_AUTOCLEAN_KEEP = 30;
-
-		public static final boolean THRESHOLDS_SPLIT = false;
-		public static final String GUI_IMPORTANT_KEYS_SEPARATOR = ",";
-		public static final String CONSOLE_SHOW_KEYS_SEPARATOR = ",";
-		public static final String THRESHOLDS_EXCLUDED_SEPARATOR = ",";
 		public static final String LOGGING_FILES_PATH = SystemUtils.getOsSpecificLocalAppDataDir() + File.separator + DIRECTORY_NAME;
 
 		private Defaults() {

@@ -71,6 +71,9 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 	private TrayIcon trayIcon;
 
 	@Getter
+	private MenuBar menuBar;
+
+	@Getter
 	private StyledTextConsole console;
 
 	/** Shell maximized status. May be null in some circumstances. */
@@ -178,6 +181,9 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 	protected Control createContents(final Composite parent) {
 		trayIcon = new TrayIcon(this);
 		multilanguages.add(trayIcon);
+
+		menuBar = new MenuBar(this);
+		multilanguages.add(menuBar);
 
 		console = new StyledTextConsole(parent, GridDataFactory.fillDefaults().grab(true, true).create(), true);
 		final String fontDataString = configuration.getString("gui.console.font", true);

@@ -1,7 +1,6 @@
 package io.github.albertus82.git.gui.preference;
 
 import static io.github.albertus82.git.gui.preference.PageDefinition.GENERAL;
-import static io.github.albertus82.git.gui.preference.PageDefinition.LOGGING;
 
 import java.awt.SystemTray;
 import java.net.Proxy;
@@ -15,7 +14,6 @@ import java.util.TreeSet;
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.swt.widgets.Composite;
 
-import io.github.albertus82.git.config.ApplicationConfig;
 import io.github.albertus82.git.config.LanguageConfigAccessor;
 import io.github.albertus82.git.gui.CloseDialog;
 import io.github.albertus82.git.gui.GitAutoSyncGui;
@@ -32,11 +30,7 @@ import io.github.albertus82.jface.preference.PreferenceDetails.PreferenceDetails
 import io.github.albertus82.jface.preference.StaticLabelsAndValues;
 import io.github.albertus82.jface.preference.field.DefaultBooleanFieldEditor;
 import io.github.albertus82.jface.preference.field.DefaultComboFieldEditor;
-import io.github.albertus82.jface.preference.field.EnhancedDirectoryFieldEditor;
-import io.github.albertus82.jface.preference.field.ShortFieldEditor;
 import io.github.albertus82.jface.preference.page.IPageDefinition;
-import io.github.albertus82.jface.preference.page.LoggingPreferencePage;
-import io.github.albertus82.util.logging.HousekeepingFilter;
 
 public enum Preference implements IPreference {
 
@@ -44,17 +38,14 @@ public enum Preference implements IPreference {
 	START_MINIMIZED(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.START_MINIMIZED).separate().build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
 	MINIMIZE_TRAY(new PreferenceDetailsBuilder(GENERAL).defaultValue(TrayIcon.Defaults.MINIMIZE_TRAY).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).disabled(!SystemTray.isSupported()).build()),
 	CONFIRM_CLOSE(new PreferenceDetailsBuilder(GENERAL).defaultValue(CloseDialog.Defaults.CONFIRM_CLOSE).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
-	SYNC_ON_START(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.SYNC_ON_START).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
+	SYNC_ON_START(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.SYNC_ON_START).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build());
 
-	
-	LOGGING_LEVEL(new PreferenceDetailsBuilder(LOGGING).defaultValue(ApplicationConfig.Defaults.LOGGING_LEVEL.getName()).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(LoggingPreferencePage.getLoggingLevelComboOptions()).build()),
-	LOGGING_FILES_ENABLED(new PreferenceDetailsBuilder(LOGGING).separate().defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
-	LOGGING_FILES_PATH(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_PATH).build(), new FieldEditorDetailsBuilder(EnhancedDirectoryFieldEditor.class).emptyStringAllowed(false).directoryMustExist(false).directoryDialogMessage(() -> Messages.INSTANCE.get("msg.preferences.directory.dialog.message.log")).build()),
-	LOGGING_FILES_AUTOCLEAN_ENABLED(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_AUTOCLEAN_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
-	LOGGING_FILES_AUTOCLEAN_KEEP(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_AUTOCLEAN_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_AUTOCLEAN_KEEP).build(), new FieldEditorDetailsBuilder(ShortFieldEditor.class).numberMinimum(HousekeepingFilter.MIN_HISTORY).build());
+	//	LOGGING_LEVEL(new PreferenceDetailsBuilder(LOGGING).defaultValue(ApplicationConfig.Defaults.LOGGING_LEVEL.getName()).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(LoggingPreferencePage.getLoggingLevelComboOptions()).build()),
+	//	LOGGING_FILES_ENABLED(new PreferenceDetailsBuilder(LOGGING).separate().defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
+	//	LOGGING_FILES_PATH(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_PATH).build(), new FieldEditorDetailsBuilder(EnhancedDirectoryFieldEditor.class).emptyStringAllowed(false).directoryMustExist(false).directoryDialogMessage(() -> Messages.INSTANCE.get("msg.preferences.directory.dialog.message.log")).build()),
+	//	LOGGING_FILES_AUTOCLEAN_ENABLED(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_AUTOCLEAN_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
+	//	LOGGING_FILES_AUTOCLEAN_KEEP(new PreferenceDetailsBuilder(LOGGING).parent(LOGGING_FILES_AUTOCLEAN_ENABLED).defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_AUTOCLEAN_KEEP).build(), new FieldEditorDetailsBuilder(ShortFieldEditor.class).numberMinimum(HousekeepingFilter.MIN_HISTORY).build());
 
-
-	
 	private static final String LABEL_KEY_PREFIX = "label.preferences.";
 
 	private static final FieldEditorFactory fieldEditorFactory = new FieldEditorFactory();
