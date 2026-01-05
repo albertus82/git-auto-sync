@@ -47,7 +47,7 @@ public class GitSyncService implements Closeable {
 
 	private static final String gitattributes = "* binary"; // Needed to make conflicted copy work correctly
 
-	private static final DateTimeFormatter logTimestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final DateTimeFormatter logTimestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	public static void main(final String... args) throws IOException {
 		final var repoPath = Path.of(args[0].trim());
@@ -75,7 +75,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	public void start() {
-		log(repoPath);
+		log("Using local path '" + repoPath + "'.");
 		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
 	}
 
@@ -156,7 +156,7 @@ public class GitSyncService implements Closeable {
 		resolveConflictsIfAny(git);
 
 		git.commit().setMessage(buildMessage()).call();
-		log("Merged");
+		log("Merged.");
 		return true;
 	}
 
@@ -164,13 +164,22 @@ public class GitSyncService implements Closeable {
 		stageAll(git);
 
 		final var status = git.status().call();
-		log("Status");
+		log("Status...");
 		if (status.isClean()) {
+			log("Clean.");
 			return false;
 		}
 
+		status.getAdded().forEach(e -> log("Added '" + e + "'."));
+		status.getChanged().forEach(e -> log("Changed '" + e + "'."));
+		status.getConflicting().forEach(e -> log("Conflicting '" + e + "'."));
+		status.getMissing().forEach(e -> log("Missing '" + e + "'."));
+		status.getModified().forEach(e -> log("Modified '" + e + "'."));
+		status.getRemoved().forEach(e -> log("Removed '" + e + "'."));
+		status.getUntracked().forEach(e -> log("Untracked '" + e + "'."));
+
 		git.commit().setMessage(buildMessage()).call();
-		log("Committed");
+		log("Committed.");
 		return true;
 	}
 
@@ -182,7 +191,7 @@ public class GitSyncService implements Closeable {
 
 	private void pullRemoteChanges(final Git git) throws Exception {
 		final var result = git.pull().setCredentialsProvider(credentials).setStrategy(MergeStrategy.RECURSIVE).call();
-		log("Pulled");
+		log("Pulled.");
 
 		final var merge = result.getMergeResult();
 		if (merge != null && merge.getMergeStatus() == MergeStatus.CONFLICTING) {
@@ -190,7 +199,7 @@ public class GitSyncService implements Closeable {
 			resolveConflictsIfAny(git);
 
 			git.commit().setMessage(buildMessage()).call();
-			log("Merged");
+			log("Merged.");
 		}
 	}
 
@@ -316,7 +325,7 @@ public class GitSyncService implements Closeable {
 
 	private void pushChanges(final Git git) throws GitAPIException {
 		git.push().setCredentialsProvider(credentials).call();
-		log("Pushed");
+		log("Pushed.");
 	}
 
 	private String buildMessage() {
@@ -324,7 +333,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	private static void log(final Object message) {
-		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + " - " + String.valueOf(message));
+		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + ' ' + String.valueOf(message));
 	}
 
 }
