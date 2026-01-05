@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
+import java.util.UUID;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jface.layout.GridDataFactory;
@@ -137,6 +138,20 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 			final var gui = new GitAutoSyncGui();
 			gui.open(); // Open main window
 			shell = gui.getShell();
+
+			final var configuration = ApplicationConfig.getPreferencesConfiguration();
+			final var properties = configuration.getProperties();
+			if (properties.getProperty("client.id", "").isBlank()) {
+				properties.setProperty("client.id", UUID.randomUUID().toString().replace("-", ""));
+			}
+			new Thread(() -> { // don't perform I/O in UI thread
+				try {
+					configuration.save();
+				}
+				catch (final IOException e) {
+					log.warn("Cannot save configuration:", e);
+				}
+			});
 
 			final var repoPath = Path.of(args[0].trim());
 			final var username = args[1].trim();

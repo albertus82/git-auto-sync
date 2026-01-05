@@ -37,6 +37,9 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
+import io.github.albertus82.git.config.ApplicationConfig;
+import io.github.albertus82.jface.preference.IPreferencesConfiguration;
+
 public class GitSyncService implements Closeable {
 
 	// GUI
@@ -60,7 +63,8 @@ public class GitSyncService implements Closeable {
 		Runtime.getRuntime().addShutdownHook(new Thread(service::stop));
 	}
 
-	private final String clientId = UUID.randomUUID().toString().replace("-", "");
+	private final IPreferencesConfiguration configuration = ApplicationConfig.getPreferencesConfiguration();
+
 	private final Path repoPath;
 	private final CredentialsProvider credentials;
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -315,7 +319,7 @@ public class GitSyncService implements Closeable {
 			fileNameWithoutExtension = originalFileName;
 			extension = "";
 		}
-		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + clientId + " on " + timestamp + ')' + extension);
+		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + getClientId() + " on " + timestamp + ')' + extension);
 		Files.copy(original, copy);
 	}
 
@@ -329,11 +333,15 @@ public class GitSyncService implements Closeable {
 	}
 
 	private String buildMessage() {
-		return clientId + ' ' + OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+		return getClientId() + ' ' + OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
 	}
 
 	private static void log(final Object message) {
 		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + ' ' + String.valueOf(message));
+	}
+
+	private String getClientId() {
+		return configuration.getString("client.id");
 	}
 
 }

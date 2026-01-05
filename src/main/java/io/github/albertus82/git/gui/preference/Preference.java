@@ -30,11 +30,14 @@ import io.github.albertus82.jface.preference.PreferenceDetails.PreferenceDetails
 import io.github.albertus82.jface.preference.StaticLabelsAndValues;
 import io.github.albertus82.jface.preference.field.DefaultBooleanFieldEditor;
 import io.github.albertus82.jface.preference.field.DefaultComboFieldEditor;
+import io.github.albertus82.jface.preference.field.EnhancedStringFieldEditor;
 import io.github.albertus82.jface.preference.page.IPageDefinition;
 
 public enum Preference implements IPreference {
 
 	LANGUAGE(new PreferenceDetailsBuilder(GENERAL).defaultValue(LanguageConfigAccessor.DEFAULT_LANGUAGE).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(Preference.getLanguageComboOptions()).build()),
+
+	CLIENT_ID(new PreferenceDetailsBuilder(GENERAL).build(), new FieldEditorDetailsBuilder(EnhancedStringFieldEditor.class).emptyStringAllowed(false).textLimit(32).build()),
 	START_MINIMIZED(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.START_MINIMIZED).separate().build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
 	MINIMIZE_TRAY(new PreferenceDetailsBuilder(GENERAL).defaultValue(TrayIcon.Defaults.MINIMIZE_TRAY).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).disabled(!SystemTray.isSupported()).build()),
 	CONFIRM_CLOSE(new PreferenceDetailsBuilder(GENERAL).defaultValue(CloseDialog.Defaults.CONFIRM_CLOSE).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
