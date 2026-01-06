@@ -1,7 +1,6 @@
 package io.github.albertus82.git.gui;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
@@ -140,7 +139,12 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 			shell = gui.getShell();
 
 			final var configuration = ApplicationConfig.getPreferencesConfiguration();
-			final var properties = configuration.getProperties();
+			var properties = configuration.getProperties();
+
+			if (properties.getProperty("repo.path", "").isBlank() || properties.getProperty("repo.username", "").isBlank() || properties.getProperty("repo.password", "").isBlank()) {
+				gui.getMenuBar().getPreferencesListener().handleEvent(null);
+			}
+			properties = configuration.getProperties();
 			if (properties.getProperty("client.id", "").isBlank()) {
 				properties.setProperty("client.id", UUID.randomUUID().toString().replace("-", ""));
 			}
@@ -153,11 +157,7 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 				}
 			});
 
-			final var repoPath = Path.of(args[0].trim());
-			final var username = args[1].trim();
-			final var password = args[2].trim();
-
-			service = new GitSyncService(repoPath, username, password);
+			service = new GitSyncService();
 			service.start();
 
 			loop(shell);

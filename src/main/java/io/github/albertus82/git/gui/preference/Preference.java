@@ -30,7 +30,9 @@ import io.github.albertus82.jface.preference.PreferenceDetails.PreferenceDetails
 import io.github.albertus82.jface.preference.StaticLabelsAndValues;
 import io.github.albertus82.jface.preference.field.DefaultBooleanFieldEditor;
 import io.github.albertus82.jface.preference.field.DefaultComboFieldEditor;
+import io.github.albertus82.jface.preference.field.EnhancedDirectoryFieldEditor;
 import io.github.albertus82.jface.preference.field.EnhancedStringFieldEditor;
+import io.github.albertus82.jface.preference.field.PasswordFieldEditor;
 import io.github.albertus82.jface.preference.page.IPageDefinition;
 
 public enum Preference implements IPreference {
@@ -41,7 +43,11 @@ public enum Preference implements IPreference {
 	START_MINIMIZED(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.START_MINIMIZED).separate().build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
 	MINIMIZE_TRAY(new PreferenceDetailsBuilder(GENERAL).defaultValue(TrayIcon.Defaults.MINIMIZE_TRAY).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).disabled(!SystemTray.isSupported()).build()),
 	CONFIRM_CLOSE(new PreferenceDetailsBuilder(GENERAL).defaultValue(CloseDialog.Defaults.CONFIRM_CLOSE).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
-	SYNC_ON_START(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.SYNC_ON_START).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build());
+	SYNC_ON_START(new PreferenceDetailsBuilder(GENERAL).defaultValue(GitAutoSyncGui.Defaults.SYNC_ON_START).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),
+
+	REPO_PATH(new PreferenceDetailsBuilder(GENERAL).build(), new FieldEditorDetailsBuilder(EnhancedDirectoryFieldEditor.class).emptyStringAllowed(false).textLimit(255).build()),
+	REPO_USERNAME(new PreferenceDetailsBuilder(GENERAL).build(), new FieldEditorDetailsBuilder(EnhancedStringFieldEditor.class).emptyStringAllowed(false).textLimit(39).build()),
+	REPO_PASSWORD(new PreferenceDetailsBuilder(GENERAL).build(), new FieldEditorDetailsBuilder(PasswordFieldEditor.class).emptyStringAllowed(false).textLimit(255).build());
 
 	//	LOGGING_LEVEL(new PreferenceDetailsBuilder(LOGGING).defaultValue(ApplicationConfig.Defaults.LOGGING_LEVEL.getName()).build(), new FieldEditorDetailsBuilder(DefaultComboFieldEditor.class).labelsAndValues(LoggingPreferencePage.getLoggingLevelComboOptions()).build()),
 	//	LOGGING_FILES_ENABLED(new PreferenceDetailsBuilder(LOGGING).separate().defaultValue(ApplicationConfig.Defaults.LOGGING_FILES_ENABLED).build(), new FieldEditorDetailsBuilder(DefaultBooleanFieldEditor.class).build()),

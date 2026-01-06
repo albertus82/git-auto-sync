@@ -2,6 +2,7 @@ package io.github.albertus82.git.engine;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -15,7 +16,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,11 +53,11 @@ public class GitSyncService implements Closeable {
 	private static final DateTimeFormatter logTimestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	public static void main(final String... args) throws IOException {
-		final var repoPath = Path.of(args[0].trim());
-		final var username = args[1].trim();
-		final var password = args[2].trim();
+		//		final var repoPath = Path.of(args[0].trim());
+		//		final var username = args[1].trim();
+		//		final var password = args[2].trim();
 
-		final var service = new GitSyncService(repoPath, username, password);
+		final var service = new GitSyncService(/* repoPath, username, password */);
 		service.start();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(service::stop));
@@ -65,22 +65,29 @@ public class GitSyncService implements Closeable {
 
 	private final IPreferencesConfiguration configuration = ApplicationConfig.getPreferencesConfiguration();
 
-	private final Path repoPath;
-	private final CredentialsProvider credentials;
+	//	private final Path repoPath;
+	//	private final CredentialsProvider credentials;
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 	private final AtomicReference<SyncState> state = new AtomicReference<>(SyncState.IDLE);
 	private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
 	private final AtomicLong lastPull = new AtomicLong(0);
 	private final AtomicBoolean pushRequired = new AtomicBoolean(false);
 
-	public GitSyncService(final Path repoPath, final String username, final String password) throws IOException {
-		this.repoPath = repoPath.toRealPath();
-		this.credentials = new UsernamePasswordCredentialsProvider(username, password);
+	public GitSyncService(/* final Path repoPath, final String username, final String password */) throws IOException {
+		//		this.repoPath = repoPath.toRealPath();
+		//		this.credentials = new UsernamePasswordCredentialsProvider(username, password);
 	}
 
-	public void start() {
-		log("Using local path '" + repoPath + "'.");
-		scheduler.scheduleWithFixedDelay(this::syncGuarded, 0, 5, TimeUnit.SECONDS);
+	public void start() throws IOException {
+		log("Using local path '" + getRepoPath() + "'.");
+		scheduler.scheduleWithFixedDelay(() -> {
+			try {
+				syncGuarded();
+			}
+			catch (final IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}, 0, 5, TimeUnit.SECONDS);
 	}
 
 	public void stop() {
@@ -92,10 +99,10 @@ public class GitSyncService implements Closeable {
 		stop();
 	}
 
-	private void syncGuarded() {
+	private void syncGuarded() throws IOException {
 		var current = state.get();
 
-		if (current == SyncState.WAITING_FOR_USER) {
+		if (current == SyncState.WAITING_FOR_USER || getCredentialsProvider() == null || getRepoPath() == null) {
 			return; // intentional pause
 		}
 
@@ -119,7 +126,7 @@ public class GitSyncService implements Closeable {
 			// ok
 		}
 		catch (final Exception e) {
-			e.printStackTrace();
+			stop();
 		}
 		finally {
 			if (state.get() == SyncState.SYNCING) {
@@ -146,7 +153,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	private Git openGit() throws IOException {
-		final var repo = new FileRepositoryBuilder().setGitDir(repoPath.resolve(".git").toFile()).readEnvironment().findGitDir().build();
+		final var repo = new FileRepositoryBuilder().setGitDir(getRepoPath().resolve(".git").toFile()).readEnvironment().findGitDir().build();
 		return new Git(repo);
 	}
 
@@ -194,7 +201,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	private void pullRemoteChanges(final Git git) throws Exception {
-		final var result = git.pull().setCredentialsProvider(credentials).setStrategy(MergeStrategy.RECURSIVE).call();
+		final var result = git.pull().setCredentialsProvider(getCredentialsProvider()).setStrategy(MergeStrategy.RECURSIVE).call();
 		log("Pulled.");
 
 		final var merge = result.getMergeResult();
@@ -282,7 +289,14 @@ public class GitSyncService implements Closeable {
 		}
 
 		state.set(SyncState.IDLE);
-		scheduler.execute(this::syncGuarded);
+		scheduler.execute(() -> {
+			try {
+				syncGuarded();
+			}
+			catch (final IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		});
 	}
 
 	private void applyConflictChoice(final Git git, final String path, final ConflictChoice choice) throws Exception {
@@ -328,7 +342,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	private void pushChanges(final Git git) throws GitAPIException {
-		git.push().setCredentialsProvider(credentials).call();
+		git.push().setCredentialsProvider(getCredentialsProvider()).call();
 		log("Pushed.");
 	}
 
@@ -342,6 +356,23 @@ public class GitSyncService implements Closeable {
 
 	private String getClientId() {
 		return configuration.getString("client.id");
+	}
+
+	private Path getRepoPath() throws IOException {
+		final var repoPath = configuration.getString("repo.path", "");
+		if (repoPath.isBlank()) {
+			return null;
+		}
+		return Path.of(repoPath).toRealPath();
+	}
+
+	private CredentialsProvider getCredentialsProvider() {
+		final var username = configuration.getString("repo.username", "");
+		final var password = configuration.getString("repo.password", "");
+		if (username.isBlank() || password.isBlank()) {
+			return null;
+		}
+		return new UsernamePasswordCredentialsProvider(username, password);
 	}
 
 }

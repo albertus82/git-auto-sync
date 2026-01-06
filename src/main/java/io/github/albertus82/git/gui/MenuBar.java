@@ -34,12 +34,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MenuBar implements Multilanguage {
 
+	@Getter
+	private final PreferencesListener preferencesListener;
+
 	MenuBar(@NonNull final GitAutoSyncGui gui) {
 		final Shell shell = gui.getShell();
 
 		final ExitListener exitListener = new ExitListener(gui);
 		final AboutListener aboutListener = new AboutListener(gui);
-		final PreferencesListener preferencesListener = new PreferencesListener(gui);
+		preferencesListener = new PreferencesListener(gui);
 
 		boolean cocoaMenuCreated = false;
 
