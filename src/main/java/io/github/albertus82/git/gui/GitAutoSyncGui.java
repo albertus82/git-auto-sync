@@ -1,6 +1,9 @@
 package io.github.albertus82.git.gui;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
@@ -141,7 +144,13 @@ public class GitAutoSyncGui extends ApplicationWindow implements Multilanguage {
 			final var configuration = ApplicationConfig.getPreferencesConfiguration();
 			var properties = configuration.getProperties();
 
-			if (properties.getProperty("repo.path", "").isBlank() || properties.getProperty("repo.username", "").isBlank() || properties.getProperty("repo.password", "").isBlank()) {
+			try {
+				if (properties.getProperty("repo.path", "").isBlank() || !Files.isDirectory(Path.of(properties.getProperty("repo.path", ""))) || properties.getProperty("repo.username", "").isBlank() || properties.getProperty("repo.password", "").isBlank()) {
+					gui.getMenuBar().getPreferencesListener().handleEvent(null);
+				}
+			}
+			catch (final InvalidPathException e) {
+				e.printStackTrace();
 				gui.getMenuBar().getPreferencesListener().handleEvent(null);
 			}
 			properties = configuration.getProperties();

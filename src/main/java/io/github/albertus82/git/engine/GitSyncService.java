@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -79,7 +80,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	public void start() throws IOException {
-		log("Using local path '" + getRepoPath() + "'.");
+		log("Using local path '" + getRepoPath().orElseThrow() + "'.");
 		scheduler.scheduleWithFixedDelay(() -> {
 			try {
 				syncGuarded();
@@ -102,7 +103,12 @@ public class GitSyncService implements Closeable {
 	private void syncGuarded() throws IOException {
 		var current = state.get();
 
-		if (current == SyncState.WAITING_FOR_USER || getCredentialsProvider() == null || getRepoPath() == null) {
+		if (getCredentialsProvider().isEmpty() || getRepoPath().isEmpty() || getClientId().isEmpty()) {
+			System.out.println("Please check configuration!");
+			return;
+		}
+
+		if (current == SyncState.WAITING_FOR_USER) {
 			return; // intentional pause
 		}
 
@@ -153,7 +159,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	private Git openGit() throws IOException {
-		final var repo = new FileRepositoryBuilder().setGitDir(getRepoPath().resolve(".git").toFile()).readEnvironment().findGitDir().build();
+		final var repo = new FileRepositoryBuilder().setGitDir(getRepoPath().orElseThrow().resolve(".git").toFile()).readEnvironment().findGitDir().build();
 		return new Git(repo);
 	}
 
@@ -201,7 +207,7 @@ public class GitSyncService implements Closeable {
 	}
 
 	private void pullRemoteChanges(final Git git) throws Exception {
-		final var result = git.pull().setCredentialsProvider(getCredentialsProvider()).setStrategy(MergeStrategy.RECURSIVE).call();
+		final var result = git.pull().setCredentialsProvider(getCredentialsProvider().orElseThrow()).setStrategy(MergeStrategy.RECURSIVE).call();
 		log("Pulled.");
 
 		final var merge = result.getMergeResult();
@@ -333,7 +339,7 @@ public class GitSyncService implements Closeable {
 			fileNameWithoutExtension = originalFileName;
 			extension = "";
 		}
-		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + getClientId() + " on " + timestamp + ')' + extension);
+		final var copy = original.resolveSibling(fileNameWithoutExtension + " (conflicted copy of " + getClientId().orElseThrow() + " on " + timestamp + ')' + extension);
 		Files.copy(original, copy);
 	}
 
@@ -342,37 +348,41 @@ public class GitSyncService implements Closeable {
 	}
 
 	private void pushChanges(final Git git) throws GitAPIException {
-		git.push().setCredentialsProvider(getCredentialsProvider()).call();
+		git.push().setCredentialsProvider(getCredentialsProvider().orElseThrow()).call();
 		log("Pushed.");
 	}
 
 	private String buildMessage() {
-		return getClientId() + ' ' + OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+		return getClientId().orElseThrow() + ' ' + OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
 	}
 
 	private static void log(final Object message) {
 		System.out.println(logTimestampFormat.format(LocalDateTime.now()) + ' ' + String.valueOf(message));
 	}
 
-	private String getClientId() {
-		return configuration.getString("client.id");
+	private Optional<String> getClientId() {
+		final var clientId = configuration.getString("client.id", "");
+		if (clientId.isBlank()) {
+			return Optional.empty();
+		}
+		return Optional.of(clientId);
 	}
 
-	private Path getRepoPath() throws IOException {
+	private Optional<Path> getRepoPath() throws IOException {
 		final var repoPath = configuration.getString("repo.path", "");
 		if (repoPath.isBlank()) {
-			return null;
+			return Optional.empty();
 		}
-		return Path.of(repoPath).toRealPath();
+		return Optional.of(Path.of(repoPath).toRealPath());
 	}
 
-	private CredentialsProvider getCredentialsProvider() {
+	private Optional<CredentialsProvider> getCredentialsProvider() {
 		final var username = configuration.getString("repo.username", "");
 		final var password = configuration.getString("repo.password", "");
 		if (username.isBlank() || password.isBlank()) {
-			return null;
+			Optional.empty();
 		}
-		return new UsernamePasswordCredentialsProvider(username, password);
+		return Optional.of(new UsernamePasswordCredentialsProvider(username, password));
 	}
 
 }
